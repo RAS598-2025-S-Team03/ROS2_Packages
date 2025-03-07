@@ -19,17 +19,17 @@ class ColorBlobDetector(Node):
         self.subscription = self.create_subscription(
             Image, '/blimp/camera', self.process_frame, 10)
 
-        # Subscribe to turtle reached topic
-        self.reached_subscription = self.create_subscription(
-            String, '/turtle_reached', self.reset_detection, 10)
+        # Subscribe to turtle position updates
+        self.turtle_subscription = self.create_subscription(
+            String, '/turtle_reached', self.reset_goal, 10)
 
         # Publish detected blob data
         self.publisher_ = self.create_publisher(String, '/blimp/blobs', 10)
 
         self.bridge = CvBridge()
-        self.goal_sent = False  # Prevents continuous detections after the first goal
-        self.detected_blob_info = None  # Store detected blob coordinates for display
-        self.get_logger().info("Improved Color Blob Detector with Quadrant System Started")
+        self.goal_sent = False  # Prevents continuous goal updates
+        self.detected_blobs = []  # Store detected blobs for visualization
+        self.get_logger().info("Improved Color Blob Detector with Sorted Goals Started")
 
     def process_frame(self, msg):
         """Detect circular objects, classify color, and transform coordinates into quadrant system."""
@@ -48,8 +48,9 @@ class ColorBlobDetector(Node):
                                    param1=70, param2=40, minRadius=MIN_RADIUS, maxRadius=150)
 
         hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+        self.detected_blobs = []  # Clear old detected blobs
 
-        if circles is not None and not self.goal_sent:
+        if circles is not None:
             circles = np.uint16(np.around(circles))
 
             for circle in circles[0, :]:
@@ -71,33 +72,42 @@ class ColorBlobDetector(Node):
                 if not color:
                     continue  # Skip if no valid color is found
 
-                self.detected_blob_info = (color, adj_x, adj_y)  # Store detected blob info
+                self.detected_blobs.append((color, adj_x, adj_y, radius, x, y))
 
-                # Publish detected blobs and stop further detections
-                self.publisher_.publish(String(data=str([(color, adj_x, adj_y, radius)])))
-                self.get_logger().info(f'Goal Published: {color} at ({adj_x}, {adj_y})')
-                self.goal_sent = True  # Stop further detections
-                break  # Stop checking other circles
+        # Sort blobs first by size (largest first)
+        self.detected_blobs.sort(key=lambda b: -b[3])
+
+        # Publish the largest detected blob as the goal if no goal is currently active
+        if self.detected_blobs and not self.goal_sent:
+            largest_blob = self.detected_blobs[0]
+            color, adj_x, adj_y, radius, x, y = largest_blob
+            self.publisher_.publish(String(data=str([(color, adj_x, adj_y, radius)])))
+            self.get_logger().info(f'Published Goal: {color} at ({adj_x}, {adj_y})')
+            self.goal_sent = True  # Prevent further updates until turtle reaches goal
+
+        # Draw all detected blobs on the frame
+        for color, adj_x, adj_y, radius, x, y in self.detected_blobs:
+            cv2.circle(frame, (x, y), radius, (0, 255, 0), 2)
+            cv2.putText(frame, f"{color} ({adj_x}, {adj_y})", (x - 40, y - 10),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
 
         # Draw quadrant grid on the frame
         self.draw_grid(frame, center_x, center_y)
 
-        # If detection is frozen, display detected blob info on the camera feed
-        if self.goal_sent and self.detected_blob_info:
-            color, adj_x, adj_y = self.detected_blob_info
-            cv2.putText(frame, f"Goal: {color} ({adj_x}, {adj_y})", (20, 40),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 255), 2)
-
         # Show debug video
-        cv2.imshow('Blob Detection with Quadrant System', frame)
+        cv2.imshow('Blob Detection with Sorted Goals', frame)
         cv2.waitKey(1)
+
+    def reset_goal(self, msg):
+        """Resets goal when turtle reaches its destination, allowing new blob selection."""
+        self.get_logger().info("Turtle reached goal. Selecting next largest blob.")
+        self.goal_sent = False  # Allow publishing the next largest blob
 
     def get_color_label(self, hsv, mask):
         """Classify color based on HSV values."""
-        # Define HSV color ranges
         color_ranges = {
             'red': [(np.array([0, 100, 100]), np.array([10, 255, 255])),
-                    (np.array([160, 100, 100]), np.array([180, 255, 255]))],  # Two ranges for red
+                    (np.array([160, 100, 100]), np.array([180, 255, 255]))],
             'green': [(np.array([35, 100, 100]), np.array([85, 255, 255]))],
             'blue': [(np.array([100, 100, 100]), np.array([140, 255, 255]))]
         }
@@ -109,13 +119,13 @@ class ColorBlobDetector(Node):
             for lower, upper in ranges:
                 color_mask = cv2.inRange(hsv, lower, upper)
                 color_pixels = cv2.bitwise_and(color_mask, mask)
-                match_percentage = np.sum(color_pixels > 0) / (np.sum(mask > 0) + 1e-5)  # Prevent divide-by-zero
+                match_percentage = np.sum(color_pixels > 0) / (np.sum(mask > 0) + 1e-5)
 
                 if match_percentage > max_purity and match_percentage > COLOR_PURITY_THRESHOLD:
                     max_purity = match_percentage
                     detected_color = color
 
-        return detected_color  # Return the most dominant color in the circle
+        return detected_color
 
     def draw_grid(self, frame, center_x, center_y):
         """Draw quadrant grid lines on the frame."""
@@ -132,12 +142,6 @@ class ColorBlobDetector(Node):
         cv2.putText(frame, "Q1", (center_x + 20, center_y - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
         cv2.putText(frame, "Q3", (center_x - 50, center_y + 40), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
         cv2.putText(frame, "Q4", (center_x + 20, center_y + 40), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
-
-    def reset_detection(self, msg):
-        """Resets detection once the turtle reaches the goal."""
-        self.get_logger().info("Turtle reached the goal. Resuming detection.")
-        self.goal_sent = False  # Allow new detections
-        self.detected_blob_info = None  # Clear stored blob info
 
 
 def main():
