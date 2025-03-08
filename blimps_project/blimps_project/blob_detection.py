@@ -87,7 +87,7 @@ class ColorBlobDetector(Node):
 
         # Draw all detected blobs on the frame
         for color, adj_x, adj_y, radius, x, y in self.detected_blobs:
-            cv2.circle(frame, (x, y), radius, (0, 255, 0), 2)
+            cv2.circle(frame, (x, y), radius, (255, 255, 0), 2)
             cv2.putText(frame, f"{color} ({adj_x}, {adj_y})", (x - 40, y - 10),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
 
@@ -108,7 +108,7 @@ class ColorBlobDetector(Node):
         color_ranges = {
             'red': [(np.array([0, 100, 100]), np.array([10, 255, 255])),
                     (np.array([160, 100, 100]), np.array([180, 255, 255]))],
-            'green': [(np.array([35, 100, 100]), np.array([85, 255, 255]))],
+            'green': [(np.array([30, 80, 80]), np.array([90, 255, 255]))],
             'blue': [(np.array([100, 100, 100]), np.array([140, 255, 255]))]
         }
 
@@ -134,14 +134,14 @@ class ColorBlobDetector(Node):
         # Vertical line
         cv2.line(frame, (center_x, 0), (center_x, height), (255, 255, 255), 2)
 
-        # Horizontal line
-        cv2.line(frame, (0, center_y), (width, center_y), (255, 255, 255), 2)
+        # # Horizontal line
+        # cv2.line(frame, (0, center_y), (width, center_y), (255, 255, 255), 2)
 
-        # Label quadrants
-        cv2.putText(frame, "Q2", (center_x - 50, center_y - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
-        cv2.putText(frame, "Q1", (center_x + 20, center_y - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
-        cv2.putText(frame, "Q3", (center_x - 50, center_y + 40), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
-        cv2.putText(frame, "Q4", (center_x + 20, center_y + 40), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
+        # # Label quadrants
+        # cv2.putText(frame, "Q2", (center_x - 50, center_y - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
+        # cv2.putText(frame, "Q1", (center_x + 20, center_y - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
+        # cv2.putText(frame, "Q3", (center_x - 50, center_y + 40), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
+        # cv2.putText(frame, "Q4", (center_x + 20, center_y + 40), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
 
 
 def main():

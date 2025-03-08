@@ -10,8 +10,10 @@ PWM_FREQUENCY = 50  # 50Hz standard servo frequency
 
 # Servo pulse width values (Adjust if needed)
 CENTER_PULSE = 1500  # Center position (1.5ms pulse width)
-LEFT_PULSE = 1000  # Counterclockwise (1.0ms pulse)
-RIGHT_PULSE = 2000  # Clockwise (2.0ms pulse)
+LEFT_TURN_RIGHT_SERVO = 1300  # Right servo angle for a left turn (slightly left)
+LEFT_TURN_LEFT_SERVO = 1000  # Left servo angle for a left turn (full left)
+RIGHT_TURN_RIGHT_SERVO = 2000  # Right servo angle for a right turn (full right)
+RIGHT_TURN_LEFT_SERVO = 1700  # Left servo angle for a right turn (slightly right)
 
 class ServoController(Node):
     def __init__(self):
@@ -34,7 +36,7 @@ class ServoController(Node):
         self.center_servos()
 
     def process_blob_data(self, msg):
-        """Adjust servo positions based on detected blob location and publish movement status."""
+        """Adjust both servo positions based on detected blob location and publish movement status."""
         blobs = eval(msg.data)  # Convert string message to list
 
         if not blobs:
@@ -48,16 +50,16 @@ class ServoController(Node):
 
         # Determine servo movement based on X position
         if x > 0:
-            self.get_logger().info("Blob detected on the right. Moving right servo.")
-            self.pi.set_servo_pulsewidth(RIGHT_SERVO_PIN, RIGHT_PULSE)  # Right servo moves
-            self.pi.set_servo_pulsewidth(LEFT_SERVO_PIN, CENTER_PULSE)  # Left servo stays centered
-            self.publish_servo_status("Right Servo Moving (Blob Right)")
+            self.get_logger().info("Blob detected on the right. Both servos turning right.")
+            self.pi.set_servo_pulsewidth(RIGHT_SERVO_PIN, RIGHT_TURN_RIGHT_SERVO)  # Right servo full right
+            self.pi.set_servo_pulsewidth(LEFT_SERVO_PIN, RIGHT_TURN_LEFT_SERVO)  # Left servo slightly right
+            self.publish_servo_status("Right Turn: Both servos turning right")
 
         elif x < 0:
-            self.get_logger().info("Blob detected on the left. Moving left servo.")
-            self.pi.set_servo_pulsewidth(LEFT_SERVO_PIN, LEFT_PULSE)  # Left servo moves
-            self.pi.set_servo_pulsewidth(RIGHT_SERVO_PIN, CENTER_PULSE)  # Right servo stays centered
-            self.publish_servo_status("Left Servo Moving (Blob Left)")
+            self.get_logger().info("Blob detected on the left. Both servos turning left.")
+            self.pi.set_servo_pulsewidth(RIGHT_SERVO_PIN, LEFT_TURN_RIGHT_SERVO)  # Right servo slightly left
+            self.pi.set_servo_pulsewidth(LEFT_SERVO_PIN, LEFT_TURN_LEFT_SERVO)  # Left servo full left
+            self.publish_servo_status("Left Turn: Both servos turning left")
 
         else:
             self.get_logger().info("Blob centered. Resetting servos.")

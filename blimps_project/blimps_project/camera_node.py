@@ -30,7 +30,7 @@ class WebcamPublisher(Node):
             cv2.imshow("Blimp Camera Feed", frame)
             cv2.waitKey(1)  # Allows the window to refresh
 
-            self.get_logger().info("Publishing webcam frame")
+            #self.get_logger().info("Publishing webcam frame")
         else:
             self.get_logger().warning("Failed to capture frame.")
 
