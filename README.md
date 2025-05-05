@@ -12,7 +12,7 @@ As the final project revolves around the **BLIMP** structure, we have adapted th
 
 ## System Setup Workflow  
 Below is the general flow of how everything is set up:  
-![System Workflow](Flowchat_wb.png)  
+![System Workflow](docs/Flowchat_wb.png)  
 
 ## Submission Contents  
 The provided ZIP file includes:  
