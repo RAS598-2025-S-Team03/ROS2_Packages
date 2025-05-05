@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>BLIMP Camera and TF Viewer</title>
+  <script src="https://cdn.jsdelivr.net/npm/roslib/build/roslib.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/eventemitter2/lib/eventemitter2.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/ros3d/build/ros3d.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mjpegcanvasjs/build/mjpegcanvas.min.js"></script>
+</head>
+<body>
+  <h1>BLIMP Camera + TF Viewer</h1>
+
+  <p>Status: <span id="status">Disconnected</span></p>
+
+  <h2>RGB Camera Feed</h2>
+  <img src="http://192.168.15.20:8080/stream?topic=/blimp/camera/rgb/image_raw&type=ros_compressed" width="640" height="480"/>
+
+  <h2>Depth Camera Feed</h2>
+  <img src="http://192.168.15.20:8080/stream?topic=/blimp/camera/depth/image_raw&type=ros_compressed" width="640" height="480"/>
+
+  <h2>TF Tree Viewer</h2>
+  <div id="tfViewer" style="width: 800px; height: 600px;"></div>
+
+  <script>
+    const ros = new ROSLIB.Ros({
+      url: 'ws://192.168.15.20:9090'
+    });
+
+    ros.on('connection', function () {
+      document.getElementById('status').textContent = 'Connected';
+    });
+
+    ros.on('error', function (error) {
+      document.getElementById('status').textContent = 'Error';
+      console.error(error);
+    });
+
+    ros.on('close', function () {
+      document.getElementById('status').textContent = 'Closed';
+    });
+
+    const viewer = new ROS3D.Viewer({
+      divID: 'tfViewer',
+      width: 800,
+      height: 600,
+      antialias: true,
+      background: '#111111'
+    });
+
+    viewer.addObject(new ROS3D.Grid({ color: '#555555' }));
+
+    const tfClient = new ROSLIB.TFClient({
+      ros: ros,
+      fixedFrame: 'base_link', // Change to your base TF frame
+      angularThres: 0.01,
+      transThres: 0.01,
+      rate: 10.0
+    });
+
+    const urdfClient = new ROS3D.UrdfClient({
+      ros: ros,
+      tfClient: tfClient,
+      path: 'http://192.168.15.20:8000/',
+      rootObject: viewer.scene,
+      loader: ROS3D.COLLADA_LOADER
+    });
+  </script>
+</body>
+</html>
+

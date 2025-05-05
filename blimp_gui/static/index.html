@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>AeroFusion Web GUI</title>
+  <script src="https://cdn.jsdelivr.net/npm/roslib/build/roslib.min.js"></script>
+  <style>
+    body {
+      font-family: sans-serif;
+      background: #f4f4f4;
+      margin: 0;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      background: white;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+
+    .title-banner {
+      background-color: #008080;
+      color: white;
+      font-size: 20px;
+      font-weight: bold;
+      padding: 15px 20px;
+      border-radius: 10px;
+      text-align: center;
+      margin-bottom: 30px;
+    }
+
+    .top-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 30px;
+    }
+
+    .status-box {
+      font-weight: bold;
+      font-size: 16px;
+    }
+
+    .mode-toggle {
+      background-color: #ccc;
+      border-radius: 20px;
+      width: 200px;
+      padding: 5px;
+      position: relative;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .mode-toggle span {
+      width: 100px;
+      text-align: center;
+      z-index: 1;
+    }
+
+    .slider {
+      position: absolute;
+      height: 100%;
+      width: 100px;
+      background-color: #4caf50;
+      border-radius: 20px;
+      transition: 0.3s;
+      left: 0;
+      top: 0;
+      z-index: 0;
+    }
+
+    input[type="checkbox"] {
+      display: none;
+    }
+
+    input[type="checkbox"]:checked + .mode-toggle .slider {
+      left: 100px;
+      background-color: #2196f3;
+    }
+
+    .middle-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 30px;
+      gap: 20px;
+    }
+
+    .dpad-column,
+    .action-buttons,
+    .camera-section {
+      flex: 1;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .dpad {
+      display: grid;
+      grid-template-columns: 50px 50px 50px;
+      grid-template-rows: 50px 50px 50px;
+      gap: 5px;
+    }
+
+    .dpad button {
+      font-size: 18px;
+      padding: 10px;
+      border-radius: 10px;
+      border: 1px solid #888;
+      cursor: pointer;
+    }
+
+    .action-buttons {
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .launch-button,
+    .land-button {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      color: white;
+      font-size: 16px;
+      border: none;
+      cursor: pointer;
+      transition: background-color 0.2s ease;
+    }
+
+    .launch-button {
+      background-color: #4CAF50;
+    }
+
+    .launch-button:hover {
+      background-color: #45A049;
+    }
+
+    .launch-button:active {
+      background-color: #388E3C;
+    }
+
+    .land-button {
+      background-color: #f44336;
+    }
+
+    .land-button:hover {
+      background-color: #e53935;
+    }
+
+    .land-button:active {
+      background-color: #c62828;
+    }
+
+    .camera-section .camera-pair {
+      display: flex;
+      gap: 20px;
+    }
+
+    .camera-box {
+      text-align: center;
+    }
+
+    .camera-box img {
+      width: 200px;
+      height: auto;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+    }
+
+    .camera-buttons button {
+      margin: 5px;
+      padding: 5px 10px;
+      border: none;
+      background-color: #666;
+      color: white;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+
+    .bottom-row {
+      display: flex;
+      justify-content: space-around;
+      margin-top: 30px;
+    }
+
+    .sensor-box {
+      background-color: #eee;
+      padding: 10px 20px;
+      border-radius: 10px;
+      text-align: center;
+      font-weight: bold;
+      font-size: 14px;
+      line-height: 1.4;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <div class="title-banner">
+      AeroFusion: Autonomous BLIMP Navigation and Sensor Integration Platform
+    </div>
+
+    <div class="top-row">
+      <div class="status-box">🔋 Battery: <span id="battery">100%</span></div>
+      <div class="status-box">⏱️ Timer: <span id="timer">00:00</span></div>
+      <label>
+        <input type="checkbox" id="modeToggle">
+        <div class="mode-toggle">
+          <span>Manual</span>
+          <span>Auto</span>
+          <div class="slider"></div>
+        </div>
+      </label>
+    </div>
+
+    <div class="middle-row">
+      <div class="dpad-column">
+        <div class="dpad">
+          <div></div>
+          <button onclick="sendCmd(0.5, 0)">↑</button>
+          <div></div>
+          <button onclick="sendCmd(0, 0.5)">←</button>
+          <button onclick="sendCmd(0, 0)">⏹</button>
+          <button onclick="sendCmd(0, -0.5)">→</button>
+          <div></div>
+          <button onclick="sendCmd(-0.5, 0)">↓</button>
+          <div></div>
+        </div>
+      </div>
+
+      <div class="action-buttons">
+        <button class="launch-button" onclick="triggerAction('launch')">Launch</button>
+        <button class="land-button" onclick="triggerAction('land')">Land</button>
+      </div>
+
+      <div class="camera-section">
+        <div class="camera-pair">
+          <div class="camera-box">
+            <strong>Main Camera</strong><br>
+            <img id="mainCam" src="http://192.168.15.25:8080/stream?topic=/oak/rgb/image_raw">
+          </div>
+          <div class="camera-box">
+            <strong>Output Camera</strong><br>
+            <img id="detectCam" src="http://192.168.15.25:8080/stream?topic=/overlay">
+            <div class="camera-buttons">
+              <button onclick="switchCamera('left')">L</button>
+              <button onclick="switchCamera('right')">R</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="bottom-row">
+      <div class="sensor-box">
+        IMU<br><span id="imu">--</span>
+      </div>
+      <div class="sensor-box">
+        ALT<br><span id="alt">--</span>
+      </div>
+      <div class="sensor-box">
+        PRESSURE<br><span id="pressure">--</span>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Timer
+    let seconds = 0;
+    setInterval(() => {
+      seconds++;
+      const min = String(Math.floor(seconds / 60)).padStart(2, '0');
+      const sec = String(seconds % 60).padStart(2, '0');
+      document.getElementById('timer').textContent = `${min}:${sec}`;
+    }, 1000);
+
+    // Battery
+    let battery = 100;
+    setInterval(() => {
+      if (battery > 0) {
+        battery--;
+        document.getElementById('battery').textContent = battery + '%';
+      }
+    }, 60000);
+
+    // ROS bridge connection
+    const ros = new ROSLIB.Ros({ url: 'ws://localhost:9090' });
+
+    ros.on('connection', () => console.log('Connected to ROS'));
+    ros.on('error', (err) => console.error('Connection error:', err));
+    ros.on('close', () => console.warn('Connection to ROS closed'));
+
+    // Mode toggle
+    const modePub = new ROSLIB.Topic({
+      ros: ros,
+      name: '/mode_select',
+      messageType: 'std_msgs/msg/String'
+    });
+
+    document.getElementById('modeToggle').addEventListener('change', (e) => {
+      const mode = e.target.checked ? "autonomous" : "manual";
+      const msg = new ROSLIB.Message({ data: mode });
+      modePub.publish(msg);
+    });
+
+    // Velocity
+    const cmdVel = new ROSLIB.Topic({
+      ros: ros,
+      name: '/cmd_vel',
+      messageType: 'geometry_msgs/msg/Twist'
+    });
+
+    function sendCmd(linear, angular) {
+      const twist = new ROSLIB.Message({
+        linear: { x: linear, y: 0, z: 0 },
+        angular: { x: 0, y: 0, z: angular }
+      });
+      cmdVel.publish(twist);
+    }
+
+    // Flight action
+    const actionPub = new ROSLIB.Topic({
+      ros: ros,
+      name: '/flight_action',
+      messageType: 'std_msgs/msg/String'
+    });
+
+    function triggerAction(action) {
+      const msg = new ROSLIB.Message({ data: action });
+      actionPub.publish(msg);
+    }
+
+    // IMU Subscriber
+    const imuSub = new ROSLIB.Topic({
+      ros: ros,
+      name: '/blimp/imu',
+      messageType: 'sensor_msgs/msg/Imu'
+    });
+
+    let lastUpdate = 0;
+    imuSub.subscribe((msg) => {
+      const now = Date.now();
+      if (now - lastUpdate < 200) return;  // limit to 5 Hz
+      lastUpdate = now;
+
+      const o = msg.orientation;
+      const a = msg.angular_velocity;
+      const l = msg.linear_acceleration;
+
+      const imuText = `
+        <strong>Orientation</strong><br>
+        x: ${o.x.toFixed(2)}, y: ${o.y.toFixed(2)}, z: ${o.z.toFixed(2)}, w: ${o.w.toFixed(2)}<br>
+        <strong>Angular Vel</strong><br>
+        x: ${a.x.toFixed(2)}, y: ${a.y.toFixed(2)}, z: ${a.z.toFixed(2)}<br>
+        <strong>Linear Acc</strong><br>
+        x: ${l.x.toFixed(2)}, y: ${l.y.toFixed(2)}, z: ${l.z.toFixed(2)}
+      `;
+      document.getElementById('imu').innerHTML = imuText;
+    });
+
+    // Optional: Camera switching logic
+    function switchCamera(dir) {
+      const topic = dir === 'left' ? '/left_cam/image_raw' : '/right_cam/image_raw';
+      document.getElementById('detectCam').src = `http://localhost:8080/stream?topic=${topic}`;
+    }
+  </script>
+
+</body>
+</html>
